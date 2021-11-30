@@ -11,6 +11,11 @@ const textarray = [];
 const topsizesarray = [];
 const filteredsizesarray = [];
 
+let fivecount = 0;
+let tencount = 0;
+let fifteencount = 0;
+
+
 //middleware
 
 app.use(express.static('public'))
@@ -28,8 +33,16 @@ app.get('/img/:width/:height', (req, res) => {
   const square = parseInt(req.query.square) || 100;
   const text = req.query.text || "H.E.S.H";
   //filter
-  if (isNaN(width) || isNaN(height) || width <1 || height < 1 || width > 2000 || height > 2000 ){
-    res.status.send('invalid image size').status(400);
+  if (isNaN(height) && isNaN(width) || height < 1 && width <1 || height > 2000 && width > 2000){
+    res.status.send('both too big').status(403);
+    return;
+  }
+  if (isNaN(width) || width <1 || width > 2000){
+    res.status.send('width too big').status(403);
+    return
+  }
+  if (isNaN(height) || height < 1 || height > 2000 ){
+    res.status.send('height too big').status(403);
     return;
   }
   //stats path
@@ -44,9 +57,15 @@ app.get('/img/:width/:height', (req, res) => {
   console.log('pog')
   topsizesarray.sort(sortByProperty("n"));
   filtertop10()
+  //hits
+  fivecount += 1;
+  tencount += 1;
+  fifteencount += 1;
   //Sending off to image creator
   imager.sendImage(res, width, height, square, text)
 })
+
+
 
 //STATS
 //sender for basics
@@ -91,7 +110,9 @@ function filtertop10(){
     filteredsizesarray[i] = topsizesarray[i]
   }
 }
+//hits
 
+//api sends
 app.get('/stats/paths/recent', (req, res, next) =>{
   res.send(RecentRequests).status(200);
   next();
