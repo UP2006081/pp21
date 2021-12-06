@@ -1,35 +1,34 @@
-const express = require('express')
-const paths = require('paths')
-const app = express()
-const port = 8080
-const imager = require('./imager')
+const express = require('express');
+const paths = require('paths');
+const app = express();
+const port = 8080;
+const imager = require('./imager');
 
 
 const RecentRequests = [];
-const sizearray = [];
-const textarray = [];
-const topsizesarray = [];
-const filteredsizesarray = [];
-
-let fivecount = 0;
-let tencount = 0;
-let fifteencount = 0;
-
+const Sizearray = [];
+const Textarray = [];
+const Topsizesarray = [];
+const referers  = [];
+const timestamps = [];
 
 //middleware
 
-app.use(express.static('public'))
+app.use(express.static('public'));
 
 
 app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`)
+  console.log(`Example app listening at http://localhost:${port}`);
 })
 
 app.get('/img/:width/:height', (req, res) => {
   //data collection
+  timestamps.push(req.headers["Date"]);
+  const refferal = req.headers.referer;
+  console.log(timestamps);
   const path = req.originalUrl;
   const width = parseInt(req.params.width);
-  const height = parseInt(req.params.height)
+  const height = parseInt(req.params.height);
   const square = parseInt(req.query.square) || 100;
   const text = req.query.text || "H.E.S.H";
   //filter
@@ -48,21 +47,19 @@ app.get('/img/:width/:height', (req, res) => {
   //stats path
   statssend(path, RecentRequests);
   //stats size
-  let size = { w:width, h:height}
-  statssend(size, sizearray); 
+  let size = { w:width, h:height};
+  statssend(size, Sizearray); 
   //stats text
-  statssend(text, textarray);
+  statssend(text, Textarray);
   //stats top 10 size
-  top10sizes(width, height, topsizesarray);
-  console.log('pog')
-  topsizesarray.sort(sortByProperty("n"));
-  filtertop10()
+  top10sizes(width, height, Topsizesarray);
+  Topsizesarray.sort(sortByProperty("n"));
+  //stats refferal 
+  top10sizesreffer(refferal);
+  referers.sort(sortByProperty("n"));
   //hits
-  fivecount += 1;
-  tencount += 1;
-  fifteencount += 1;
   //Sending off to image creator
-  imager.sendImage(res, width, height, square, text)
+  imager.sendImage(res, width, height, square, text);
 })
 
 
@@ -70,18 +67,16 @@ app.get('/img/:width/:height', (req, res) => {
 //STATS
 //sender for basics
 function statssend(datatye, array){
-  console.log(datatye);
   if (!array.includes(datatye)){
     array.push(datatye);
-  }
+  };
   if (array.length > 10){
     array.shift();
-  }
+  };
 };
 //top 10
 //find value up it
 function top10sizes(width, height, array){
-  console.log({width, height});
   let found = false;
   for (let i = 0; i < array.length; i++){
     if (array[i]["w"] === width && array[i]["h"] === height){
@@ -92,6 +87,20 @@ function top10sizes(width, height, array){
   if(!found){
     array.push({w: width, h: height, n:1});
   }
+}
+//top 10 reffers 
+function top10sizesreffer(refferal){
+  let found = false;
+  for (let i = 0; i < referers.length; i++){
+    if (referers[i]["ref"] === refferal){
+      referers[i]["n"]  += 1;
+      found = true;
+    }
+  }
+  if(!found){
+    referers.push({ref: refferal, n:1});
+  }
+
 }
 //sorter
 function sortByProperty(property){  
@@ -104,12 +113,6 @@ function sortByProperty(property){
      return 0;  
   }  
 }
-//cut down to 10
-function filtertop10(){
-  for (let i = 0; i < 10; i++){
-    filteredsizesarray[i] = topsizesarray[i]
-  }
-}
 //hits
 
 //api sends
@@ -119,16 +122,21 @@ app.get('/stats/paths/recent', (req, res, next) =>{
 })
 
 app.get('/stats/sizes/recent', (req, res, next) =>{
-  res.send(sizearray).status(200);
+  res.send(Sizearray).status(200);
   next();
 })
 
 app.get('/stats/texts/recent', (req, res, next) =>{
-  res.send(textarray).status(200);
+  res.send(Textarray).status(200);
   next();
 })
 
 app.get('/stats/sizes/top', (req, res, next) =>{
-  res.send(filteredsizesarray).status(200);
+  res.send(Topsizesarray.slice(0, 9)).status(200);
+  next();
+})
+
+app.get('/stats/referrers/top', (req, res, next) =>{
+  res.send(referers.slice(0, 9)).status(200);
   next();
 })
