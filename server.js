@@ -5,15 +5,16 @@ const port = 8080;
 const imager = require('./imager');
 
 
-const RecentRequests = [];
-const Sizearray = [];
-const Textarray = [];
-const Topsizesarray = [];
-const referers  = [];
-const timestamps = [];
+let RecentRequests = [];
+let Sizearray = [];
+let Textarray = [];
+let Topsizesarray = [];
+let referers  = [];
+let timestamps = Array(15).fill(0);
+
+setInterval(shiftCounters, 1000);
 
 //middleware
-
 app.use(express.static('public'));
 
 
@@ -22,8 +23,9 @@ app.listen(port, () => {
 })
 
 app.get('/img/:width/:height', (req, res) => {
+  //add to count 
+  timestamps[0] += 1;
   //data collection
-  timestamps.push(req.headers["Date"]);
   const refferal = req.headers.referer;
   console.log(timestamps);
   const path = req.originalUrl;
@@ -114,6 +116,10 @@ function sortByProperty(property){
   }  
 }
 //hits
+function shiftCounters () {
+  timestamps.unshift(0);
+  timestamps.pop();
+}
 
 //api sends
 app.get('/stats/paths/recent', (req, res, next) =>{
@@ -140,3 +146,35 @@ app.get('/stats/referrers/top', (req, res, next) =>{
   res.send(referers.slice(0, 9)).status(200);
   next();
 })
+
+app.get('/stats/hits', (req, res, next) =>{
+  const s5 = timestamps.slice(0, 5).reduce((x, y) => x + y, 0);;
+  const s10 = timestamps.slice(0, 10).reduce((x, y) => x + y, 0);;
+  const s15 = timestamps.slice(0, 15).reduce((x, y) => x + y, 0);;
+  res.send([
+    {
+      title: '5s',
+      count: s5
+    },
+    {
+      title: '10s',
+      count: s10
+    },
+    {
+      title: '15s',
+      count: s15
+    }
+  ]);
+  next();
+})
+//reset stats
+app.delete('/stats', resetStats);
+
+function resetStats (req, res) {
+  RecentRequests = [];
+  Sizearray = [];
+  Textarray = [];
+  Topsizesarray = [];
+  referers  = [];
+  timestamps.fill(0);
+}
